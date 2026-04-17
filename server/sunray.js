@@ -154,8 +154,9 @@ export class SunrayClient {
   parseVersion(raw) {
     const parts = raw.trim().split(',');
     if (parts[0] !== 'V') return null;
-    const encMode = parseInt(parts[2]) || 0;
-    const challenge = parseInt(parts[3]) || 0;
+    // V,name,version,encryptMode,challenge,board,driver,mcuFwName,mcuFwVer,robotId,crc
+    const encMode = parseInt(parts[3]) || 0;
+    const challenge = parseInt(parts[4]) || 0;
     // Set encryption parameters from handshake
     if (encMode === 1 && challenge > 0) {
       this.encryptMode = 1;
@@ -165,14 +166,14 @@ export class SunrayClient {
       console.log(`Encryption enabled: challenge=${challenge}, key=${this.encryptKey}`);
     }
     return {
-      version: parts[1] || '',
+      version: parts[2] || '',
       encryptMode: encMode,
       challenge,
-      board: parts[4] || '',
-      driver: parts[5] || '',
-      mcuFwName: parts[6] || '',
-      mcuFwVer: parts[7] || '',
-      robotId: parts[8] || '',
+      board: parts[5] || '',
+      driver: parts[6] || '',
+      mcuFwName: parts[7] || '',
+      mcuFwVer: parts[8] || '',
+      robotId: parts[9] || '',
       timestamp: Date.now(),
     };
   }
