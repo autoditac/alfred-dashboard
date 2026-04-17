@@ -213,12 +213,9 @@ export class SunrayClient {
   async pollVersion() {
     try {
       const raw = await this.sendRaw('AT+V');
-      console.log(`AT+V response: "${raw.trim()}"`);
       const parsed = this.parseVersion(raw);
       if (parsed) this.cachedVersion = parsed;
-    } catch (e) {
-      console.error(`AT+V error: ${e.message}`);
-    }
+    } catch {}
   }
 
   async startPolling() {
