@@ -16,8 +16,7 @@ function computeCrc(str) {
 }
 
 function addCrc(cmd) {
-  const withComma = cmd + ',';
-  return withComma + computeCrc(withComma);
+  return cmd + ',' + computeCrc(cmd);
 }
 
 function caesarEncrypt(str, key) {
@@ -193,6 +192,7 @@ export class SunrayClient {
   async pollStatus() {
     try {
       const raw = await this.sendRaw('AT+S');
+      if (!raw.trim()) return;
       const parsed = this.parseStatus(raw);
       if (parsed) this.cachedStatus = parsed;
     } catch {
@@ -203,6 +203,7 @@ export class SunrayClient {
   async pollStats() {
     try {
       const raw = await this.sendRaw('AT+T');
+      if (!raw.trim()) return;
       const parsed = this.parseStats(raw);
       if (parsed) this.cachedStats = parsed;
     } catch {}
@@ -211,9 +212,12 @@ export class SunrayClient {
   async pollVersion() {
     try {
       const raw = await this.sendRaw('AT+V');
+      console.log(`AT+V response: "${raw.trim()}"`);
       const parsed = this.parseVersion(raw);
       if (parsed) this.cachedVersion = parsed;
-    } catch {}
+    } catch (e) {
+      console.error(`AT+V error: ${e.message}`);
+    }
   }
 
   async startPolling() {
