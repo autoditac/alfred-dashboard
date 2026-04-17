@@ -1,6 +1,6 @@
 <script>
   import './app.css';
-  import { getStatus, getStats, getVersion } from './lib/api.js';
+  import { getStatus, getStats, getVersion, getWifi } from './lib/api.js';
   import Header from './components/Header.svelte';
   import StatusBadge from './components/StatusBadge.svelte';
   import BatteryCard from './components/BatteryCard.svelte';
@@ -8,11 +8,13 @@
   import OperationCard from './components/OperationCard.svelte';
   import StatsCard from './components/StatsCard.svelte';
   import ControlPanel from './components/ControlPanel.svelte';
+  import MapCard from './components/MapCard.svelte';
   import ConnectionLost from './components/ConnectionLost.svelte';
 
   let status = $state(null);
   let stats = $state(null);
   let version = $state(null);
+  let wifi = $state(null);
   let error = $state(null);
   let tab = $state('status');
 
@@ -37,18 +39,26 @@
     } catch {}
   }
 
+  async function pollWifi() {
+    try {
+      wifi = await getWifi();
+    } catch {}
+  }
+
   $effect(() => {
     pollStatus();
     pollStats();
     pollVersion();
+    pollWifi();
     const si = setInterval(pollStatus, 2000);
     const ti = setInterval(pollStats, 30000);
-    return () => { clearInterval(si); clearInterval(ti); };
+    const wi = setInterval(pollWifi, 10000);
+    return () => { clearInterval(si); clearInterval(ti); clearInterval(wi); };
   });
 </script>
 
 <div class="shell">
-  <Header {version} connected={status?.connected ?? false} />
+  <Header {version} {wifi} connected={status?.connected ?? false} />
 
   {#if error && !status}
     <ConnectionLost message={error} />
@@ -58,11 +68,14 @@
         <div class="grid fade-in">
           <StatusBadge {status} />
           <BatteryCard {status} />
-          <GpsCard {status} />
-          <OperationCard {status} />
+          {#if status?.lat}
+            <MapCard {status} />
+          {/if}
           {#if stats}
             <StatsCard {stats} />
           {/if}
+          <GpsCard {status} />
+          <OperationCard {status} />
         </div>
       {:else if tab === 'control'}
         <ControlPanel {status} />

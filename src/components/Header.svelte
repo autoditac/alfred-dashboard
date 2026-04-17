@@ -1,5 +1,16 @@
 <script>
-  let { version, connected } = $props();
+  let { version, wifi, connected } = $props();
+
+  const wifiStrength = $derived(() => {
+    if (!wifi) return 0;
+    const dbm = wifi.signal;
+    // Map dBm to 0-4 bars: >-50 = 4, >-60 = 3, >-70 = 2, >-80 = 1, else 0
+    if (dbm > -50) return 4;
+    if (dbm > -60) return 3;
+    if (dbm > -70) return 2;
+    if (dbm > -80) return 1;
+    return 0;
+  });
 </script>
 
 <header class="header">
@@ -11,13 +22,26 @@
       </svg>
     </div>
     <div class="title-block">
-      <h1>Alfred</h1>
+      <h1>{version?.hostname ?? 'Alfred'}</h1>
       {#if version}
-        <span class="version">{version.mcuFwName} {version.version}</span>
+        <span class="version">{version.version} · {version.mcuFwName} {version.mcuFwVer} · ui:{__GIT_SHA__}</span>
       {/if}
     </div>
   </div>
-  <div class="connection-dot" class:online={connected} title={connected ? 'Connected' : 'Disconnected'}></div>
+  <div class="indicators">
+    {#if wifi}
+      <div class="wifi-indicator" title="{wifi.signal} dBm · {wifi.band ?? ''} · {wifi.bitrate} Mbit/s">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+          <path d="M1.5 8.5a18 18 0 0 1 21 0" stroke={wifiStrength() >= 1 ? 'var(--green)' : 'var(--text-dim)'} />
+          <path d="M5 12a12 12 0 0 1 14 0" stroke={wifiStrength() >= 2 ? 'var(--green)' : 'var(--text-dim)'} />
+          <path d="M8.5 15.5a6 6 0 0 1 7 0" stroke={wifiStrength() >= 3 ? 'var(--green)' : 'var(--text-dim)'} />
+          <circle cx="12" cy="19" r="1.5" fill={wifiStrength() >= 1 ? 'var(--green)' : 'var(--text-dim)'} stroke="none" />
+        </svg>
+        <span class="wifi-dbm">{wifi.signal}{#if wifi.band} · {wifi.band}{/if}</span>
+      </div>
+    {/if}
+    <div class="connection-dot" class:online={connected} title={connected ? 'Connected' : 'Disconnected'}></div>
+  </div>
 </header>
 
 <style>
@@ -73,5 +97,28 @@
   .connection-dot.online {
     background: var(--green);
     animation: pulse-green 2s ease-in-out infinite;
+  }
+
+  .indicators {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .wifi-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .wifi-indicator svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wifi-dbm {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
   }
 </style>

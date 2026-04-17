@@ -24,6 +24,10 @@ export function getVersion() {
   return request('/version');
 }
 
+export function getWifi() {
+  return request('/wifi');
+}
+
 export function sendControl(action, params = {}) {
   return request('/control', {
     method: 'POST',
