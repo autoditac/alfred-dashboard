@@ -1,6 +1,7 @@
 /**
  * Sunray AT command client.
  * Talks to the Sunray firmware HTTP server (port 80) using AT commands with CRC.
+ * Handles Caesar-cipher encryption when ENABLE_PASS is active.
  */
 
 const OP_NAMES = ['IDLE', 'MOW', 'CHARGE', 'ERROR', 'DOCK'];
@@ -19,20 +20,44 @@ function addCrc(cmd) {
   return withComma + computeCrc(withComma);
 }
 
+function caesarEncrypt(str, key) {
+  let result = '';
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 32 && code <= 126) {
+      let enc = code + key;
+      if (enc > 126) enc = 31 + (enc - 126);
+      result += String.fromCharCode(enc);
+    } else {
+      result += str[i];
+    }
+  }
+  return result;
+}
+
 export class SunrayClient {
-  constructor(host, port = 80) {
+  constructor(host, port = 80, password = 123456) {
     this.host = host;
     this.port = port;
+    this.password = password;
     this.baseUrl = `http://${host}:${port}`;
     this.cachedStatus = null;
     this.cachedStats = null;
     this.cachedVersion = null;
     this.connected = false;
     this.pollTimers = [];
+    this.encryptMode = 0;
+    this.encryptKey = 0;
+    this.challenge = 0;
+    this.handshakeDone = false;
   }
 
   async sendRaw(atCommand) {
-    const cmd = addCrc(atCommand);
+    const withCrc = addCrc(atCommand);
+    // Encrypt if handshake completed and not AT+V
+    const cmd = (this.encryptMode === 1 && !atCommand.startsWith('AT+V'))
+      ? caesarEncrypt(withCrc, this.encryptKey)
+      : withCrc;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
@@ -130,10 +155,20 @@ export class SunrayClient {
   parseVersion(raw) {
     const parts = raw.trim().split(',');
     if (parts[0] !== 'V') return null;
+    const encMode = parseInt(parts[2]) || 0;
+    const challenge = parseInt(parts[3]) || 0;
+    // Set encryption parameters from handshake
+    if (encMode === 1 && challenge > 0) {
+      this.encryptMode = 1;
+      this.challenge = challenge;
+      this.encryptKey = this.password % challenge;
+      this.handshakeDone = true;
+      console.log(`Encryption enabled: challenge=${challenge}, key=${this.encryptKey}`);
+    }
     return {
       version: parts[1] || '',
-      encryptMode: parseInt(parts[2]) || 0,
-      challenge: parseInt(parts[3]) || 0,
+      encryptMode: encMode,
+      challenge,
       board: parts[4] || '',
       driver: parts[5] || '',
       mcuFwName: parts[6] || '',
@@ -181,11 +216,16 @@ export class SunrayClient {
     } catch {}
   }
 
-  startPolling() {
-    // Initial fetch
-    this.pollVersion();
-    this.pollStatus();
-    this.pollStats();
+  async startPolling() {
+    // Handshake first — AT+V must succeed before encrypted commands
+    await this.pollVersion();
+    if (!this.handshakeDone && this.encryptMode === 0) {
+      console.log('No encryption required (ENABLE_PASS not set)');
+    }
+
+    // Initial data fetch
+    await this.pollStatus();
+    await this.pollStats();
 
     // Status every 2s, stats every 60s, version every 5 min
     this.pollTimers.push(setInterval(() => this.pollStatus(), 2000));

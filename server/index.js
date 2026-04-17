@@ -10,9 +10,10 @@ const app = new Hono();
 const MOCK = process.env.MOCK === '1' || process.env.MOCK === 'true';
 const SUNRAY_HOST = process.env.SUNRAY_HOST || 'localhost';
 const SUNRAY_PORT = parseInt(process.env.SUNRAY_PORT || '80', 10);
+const SUNRAY_PASS = parseInt(process.env.SUNRAY_PASS || '123456', 10);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-const sunray = MOCK ? new MockSunrayClient() : new SunrayClient(SUNRAY_HOST, SUNRAY_PORT);
+const sunray = MOCK ? new MockSunrayClient() : new SunrayClient(SUNRAY_HOST, SUNRAY_PORT, SUNRAY_PASS);
 
 app.use('/api/*', cors());
 
