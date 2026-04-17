@@ -11,8 +11,9 @@
     "start": "node server/index.js"
   },
   "dependencies": {
+    "@hono/node-server": "^1.14.0",
     "hono": "^4.7.0",
-    "@hono/node-server": "^1.14.0"
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
