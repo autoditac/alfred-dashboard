@@ -94,7 +94,7 @@ alfred-dashboard/
     App.svelte              Main layout — status grid + control tab
     lib/api.js              Fetch wrapper for /api/* endpoints
     components/
-      Header.svelte         Hostname, version, WiFi signal, connection dot
+      Header.svelte         Hostname, firmware + MCU version, WiFi signal, connection dot
       StatusBadge.svelte    Operation state (IDLE / MOW / CHARGE / ERROR)
       BatteryCard.svelte    Voltage and current
       GpsCard.svelte        Satellites, fix, accuracy, DGPS age
