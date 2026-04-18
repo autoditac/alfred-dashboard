@@ -68,12 +68,8 @@ MOCK=1 npm run server
 
 ```bash
 docker buildx build --platform linux/arm64 \
-  --build-arg GIT_SHA=$(git rev-parse --short HEAD) \
   -t ghcr.io/autoditac/alfred-dashboard:latest .
 ```
-
-The `GIT_SHA` build arg embeds the commit hash in the UI header for
-traceability. It falls back to `unknown` if omitted.
 
 ## Deployment
 

@@ -24,7 +24,7 @@
     <div class="title-block">
       <h1>{version?.hostname ?? 'Alfred'}</h1>
       {#if version}
-        <span class="version">{version.version} · {version.mcuFwName} {version.mcuFwVer} · ui:{__GIT_SHA__}</span>
+        <span class="version">{version.version} · {version.mcuFwName} {version.mcuFwVer}</span>
       {/if}
     </div>
   </div>

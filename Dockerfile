@@ -1,6 +1,4 @@
 FROM node:22-alpine AS builder
-ARG GIT_SHA=unknown
-ENV VITE_GIT_SHA=$GIT_SHA
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
