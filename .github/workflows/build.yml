@@ -39,6 +39,8 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
             TAGS="$TAGS,$REGISTRY/$IMAGE:$VERSION,$REGISTRY/$IMAGE:latest"
+          else
+            TAGS="$TAGS,$REGISTRY/$IMAGE:alpha"
           fi
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
