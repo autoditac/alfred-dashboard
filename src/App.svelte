@@ -53,7 +53,8 @@
     const si = setInterval(pollStatus, 2000);
     const ti = setInterval(pollStats, 30000);
     const wi = setInterval(pollWifi, 10000);
-    return () => { clearInterval(si); clearInterval(ti); clearInterval(wi); };
+    const vi = setInterval(pollVersion, 60000);
+    return () => { clearInterval(si); clearInterval(ti); clearInterval(wi); clearInterval(vi); };
   });
 </script>
 
