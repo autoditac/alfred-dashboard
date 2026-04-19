@@ -10,6 +10,7 @@
   import ControlPanel from './components/ControlPanel.svelte';
   import MapCard from './components/MapCard.svelte';
   import ConnectionLost from './components/ConnectionLost.svelte';
+  import FirmwareUpdateModal from './components/FirmwareUpdateModal.svelte';
 
   let status = $state(null);
   let stats = $state(null);
@@ -17,6 +18,38 @@
   let wifi = $state(null);
   let error = $state(null);
   let tab = $state('status');
+
+  // Firmware-update detection:
+  // Compare the reported firmware (sunray version + MCU fw version) against
+  // the one the user last acknowledged, persisted in localStorage.  When
+  // they differ, pop a modal once; on OK we record the new value as
+  // acknowledged so it doesn't reappear on every reload.
+  const FW_ACK_KEY = 'alfred.fwAck.v1';
+
+  function fwKey(v) {
+    if (!v) return null;
+    return `${v.version ?? ''}|${v.mcuFwName ?? ''}|${v.mcuFwVer ?? ''}`;
+  }
+
+  let ackedFw = $state(localStorage.getItem(FW_ACK_KEY));
+  // Snapshot of the previously-reported version, shown as "Previous" in the
+  // modal.  Kept in storage so a reload doesn't lose the before-state.
+  const FW_PREV_KEY = 'alfred.fwPrev.v1';
+  let prevFw = $state(JSON.parse(localStorage.getItem(FW_PREV_KEY) || 'null'));
+
+  const showFwModal = $derived(
+    !!version && !!ackedFw && fwKey(version) !== ackedFw
+  );
+
+  function acknowledgeFirmware() {
+    const key = fwKey(version);
+    if (key) {
+      localStorage.setItem(FW_ACK_KEY, key);
+      ackedFw = key;
+      localStorage.setItem(FW_PREV_KEY, JSON.stringify(version));
+      prevFw = version;
+    }
+  }
 
   async function pollStatus() {
     try {
@@ -35,7 +68,17 @@
 
   async function pollVersion() {
     try {
-      version = await getVersion();
+      const next = await getVersion();
+      version = next;
+      const key = fwKey(next);
+      if (key && !ackedFw) {
+        // First ever load on this device — silently adopt as the baseline
+        // so we don't flash the "updated" modal on a fresh install.
+        localStorage.setItem(FW_ACK_KEY, key);
+        ackedFw = key;
+        localStorage.setItem(FW_PREV_KEY, JSON.stringify(next));
+        prevFw = next;
+      }
     } catch {}
   }
 
@@ -95,6 +138,14 @@
     </button>
   </nav>
 </div>
+
+{#if showFwModal}
+  <FirmwareUpdateModal
+    oldVersion={prevFw}
+    newVersion={version}
+    onAck={acknowledgeFirmware}
+  />
+{/if}
 
 <style>
   .shell {
