@@ -1,6 +1,11 @@
 <script>
   let { version, wifi, connected } = $props();
 
+  // Dashboard build version, injected by vite (see vite.config.js).
+  // Falls back to 'dev' for local `npm run dev`.
+  // Git sha is 40 chars; show first 7 for readability.
+  const UI_VERSION = __APP_VERSION__.length >= 40 ? __APP_VERSION__.slice(0, 7) : __APP_VERSION__;
+
   const wifiStrength = $derived(() => {
     if (!wifi) return 0;
     const dbm = wifi.signal;
@@ -26,15 +31,16 @@
       {#if version}
         <span class="version">{version.version} · {version.mcuFwName} {version.mcuFwVer}</span>
       {/if}
+      <span class="ui-version">ui {UI_VERSION}</span>
     </div>
   </div>
   <div class="indicators">
     {#if wifi}
       <div class="wifi-indicator" title="{wifi.signal} dBm · {wifi.band ?? ''} · {wifi.bitrate} Mbit/s">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
-          <path d="M1.5 8.5a18 18 0 0 1 21 0" stroke={wifiStrength() >= 1 ? 'var(--green)' : 'var(--text-dim)'} />
-          <path d="M5 12a12 12 0 0 1 14 0" stroke={wifiStrength() >= 2 ? 'var(--green)' : 'var(--text-dim)'} />
-          <path d="M8.5 15.5a6 6 0 0 1 7 0" stroke={wifiStrength() >= 3 ? 'var(--green)' : 'var(--text-dim)'} />
+          <path d="M1.5 8.5a18 18 0 0 1 21 0" stroke={wifiStrength() >= 4 ? 'var(--green)' : 'var(--text-dim)'} />
+          <path d="M5 12a12 12 0 0 1 14 0" stroke={wifiStrength() >= 3 ? 'var(--green)' : 'var(--text-dim)'} />
+          <path d="M8.5 15.5a6 6 0 0 1 7 0" stroke={wifiStrength() >= 2 ? 'var(--green)' : 'var(--text-dim)'} />
           <circle cx="12" cy="19" r="1.5" fill={wifiStrength() >= 1 ? 'var(--green)' : 'var(--text-dim)'} stroke="none" />
         </svg>
         <span class="wifi-dbm">{wifi.signal}{#if wifi.band} · {wifi.band}{/if}</span>
@@ -78,6 +84,12 @@
   .version {
     font-size: 11px;
     color: var(--text-secondary);
+  }
+
+  .ui-version {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
   }
 
   .title-block {
