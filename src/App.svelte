@@ -1,6 +1,6 @@
 <script>
   import './app.css';
-  import { getStatus, getStats, getVersion, getWifi } from './lib/api.js';
+  import { getStatus, getStats, getVersion, getWifi, getComponents } from './lib/api.js';
   import Header from './components/Header.svelte';
   import StatusBadge from './components/StatusBadge.svelte';
   import BatteryCard from './components/BatteryCard.svelte';
@@ -11,11 +11,13 @@
   import MapCard from './components/MapCard.svelte';
   import ConnectionLost from './components/ConnectionLost.svelte';
   import FirmwareUpdateModal from './components/FirmwareUpdateModal.svelte';
+  import ComponentVersionsCard from './components/ComponentVersionsCard.svelte';
 
   let status = $state(null);
   let stats = $state(null);
   let version = $state(null);
   let wifi = $state(null);
+  let components = $state(null);
   let error = $state(null);
   let tab = $state('status');
 
@@ -50,6 +52,18 @@
       prevFw = version;
     }
   }
+
+  // Component version tracking
+  const COMP_ACK_KEY = 'alfred.componentsAck.v1';
+  const COMP_PREV_KEY = 'alfred.componentsPrev.v1';
+  
+  function componentsKey(comps) {
+    if (!comps || !Array.isArray(comps)) return null;
+    return JSON.stringify(comps.map(c => ({ name: c.name, version: c.version, sha: c.sha })));
+  }
+  
+  let ackedComponents = $state(localStorage.getItem(COMP_ACK_KEY));
+  let prevComponents = $state(JSON.parse(localStorage.getItem(COMP_PREV_KEY) || 'null'));
 
   async function pollStatus() {
     try {
@@ -88,16 +102,35 @@
     } catch {}
   }
 
+  async function pollComponents() {
+    try {
+      const data = await getComponents();
+      if (data?.components) {
+        components = data;
+        const key = componentsKey(data.components);
+        if (key && !ackedComponents) {
+          // First ever load — silently adopt as baseline
+          localStorage.setItem(COMP_ACK_KEY, key);
+          ackedComponents = key;
+          localStorage.setItem(COMP_PREV_KEY, JSON.stringify(data.components));
+          prevComponents = data.components;
+        }
+      }
+    } catch {}
+  }
+
   $effect(() => {
     pollStatus();
     pollStats();
     pollVersion();
     pollWifi();
+    pollComponents();
     const si = setInterval(pollStatus, 2000);
     const ti = setInterval(pollStats, 30000);
     const wi = setInterval(pollWifi, 10000);
     const vi = setInterval(pollVersion, 60000);
-    return () => { clearInterval(si); clearInterval(ti); clearInterval(wi); clearInterval(vi); };
+    const ci = setInterval(pollComponents, 60000);
+    return () => { clearInterval(si); clearInterval(ti); clearInterval(wi); clearInterval(vi); clearInterval(ci); };
   });
 </script>
 
@@ -120,6 +153,9 @@
           {/if}
           <GpsCard {status} />
           <OperationCard {status} />
+          {#if components?.components}
+            <ComponentVersionsCard components={components.components} lastUpdate={components.lastUpdate} />
+          {/if}
         </div>
       {:else if tab === 'control'}
         <ControlPanel {status} />

@@ -61,6 +61,104 @@ app.get('/api/wifi', async (c) => {
   }
 });
 
+// --- Component version tracking ---
+
+function parseSunrayVersion(versionString) {
+  if (!versionString) return null;
+  
+  // Match alpha pattern: 1.0.331-autoditac.1-alpha.abc1234
+  const alphaMatch = versionString.match(/^(.+?)-alpha\.([a-f0-9]{7})$/);
+  if (alphaMatch) {
+    return {
+      name: 'Sunray Rover Firmware',
+      version: alphaMatch[1],
+      channel: 'alpha',
+      sha: alphaMatch[2],
+      timestamp: Date.now(),
+      link: `https://github.com/autoditac/Sunray/commit/${alphaMatch[2]}`,
+    };
+  }
+  
+  // Release pattern: 1.0.331-autoditac.1 (no -alpha suffix)
+  if (!versionString.includes('-alpha')) {
+    return {
+      name: 'Sunray Rover Firmware',
+      version: versionString,
+      channel: 'release',
+      timestamp: Date.now(),
+      link: `https://github.com/autoditac/Sunray/releases/tag/v${versionString}`,
+    };
+  }
+  
+  return null;
+}
+
+async function getCassandraVersion() {
+  try {
+    // Try to get image info from podman
+    const { stdout } = await execFileAsync('podman', ['images', 'ghcr.io/eineinfach/cassandra', '--format={{.Tag}}']);
+    const tag = stdout.trim();
+    
+    if (tag && tag !== '<none>') {
+      return {
+        name: 'CaSSAndRA Path Planner',
+        version: tag,
+        channel: 'stable',
+        timestamp: Date.now(),
+        link: `https://github.com/EinEinfach/CaSSAndRA/releases/tag/v${tag}`,
+      };
+    }
+  } catch {
+    // Podman command failed, try alternative approaches
+  }
+  
+  // Fallback: Try CaSSAndRA API if available (port 3001)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch('http://localhost:3001/api/version', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        name: 'CaSSAndRA Path Planner',
+        version: data.version || 'unknown',
+        channel: 'stable',
+        timestamp: Date.now(),
+        link: `https://github.com/EinEinfach/CaSSAndRA/releases/tag/v${data.version}`,
+      };
+    }
+  } catch {
+    // API not available
+  }
+  
+  return null;
+}
+
+app.get('/api/components', async (c) => {
+  const components = [];
+  
+  // Get Sunray firmware version
+  const sunrayVer = sunray.getCachedVersion();
+  if (sunrayVer?.version) {
+    const sunrayComponent = parseSunrayVersion(sunrayVer.version);
+    if (sunrayComponent) {
+      components.push(sunrayComponent);
+    }
+  }
+  
+  // Get CaSSAndRA version
+  const cassandraComponent = await getCassandraVersion();
+  if (cassandraComponent) {
+    components.push(cassandraComponent);
+  }
+  
+  return c.json({
+    components,
+    lastUpdate: new Date().toISOString(),
+  });
+});
+
 app.post('/api/control', async (c) => {
   const body = await c.req.json();
   const { action, params } = body;
