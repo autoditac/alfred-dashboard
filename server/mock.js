@@ -34,7 +34,7 @@ export class MockSunrayClient {
 
   startPolling() {
     this.cachedVersion = {
-      version: '1.0.90',
+      version: '1.0.331-autoditac.1-alpha.abc1234',
       encryptMode: 0,
       challenge: 0,
       board: 'Linux',

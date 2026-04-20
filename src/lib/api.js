@@ -24,6 +24,10 @@ export function getVersion() {
   return request('/version');
 }
 
+export function getComponents() {
+  return request('/components');
+}
+
 export function getWifi() {
   return request('/wifi');
 }
