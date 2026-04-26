@@ -3,7 +3,7 @@ name: Build & Push Docker Image
 on:
   push:
     branches: [main]
-    tags: ['*']
+    tags: ['v*']
   workflow_dispatch:
 
 env:
@@ -35,12 +35,12 @@ jobs:
       - name: Determine tags
         id: tags
         run: |
-          TAGS="$REGISTRY/$IMAGE:${{ github.sha }}"
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
-            TAGS="$TAGS,$REGISTRY/$IMAGE:$VERSION,$REGISTRY/$IMAGE:latest"
+            TAGS="$REGISTRY/$IMAGE:$VERSION,$REGISTRY/$IMAGE:latest,$REGISTRY/$IMAGE:sha-$SHORT_SHA"
           else
-            TAGS="$TAGS,$REGISTRY/$IMAGE:alpha"
+            TAGS="$REGISTRY/$IMAGE:beta,$REGISTRY/$IMAGE:sha-$SHORT_SHA"
           fi
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
