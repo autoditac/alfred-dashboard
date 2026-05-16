@@ -3,16 +3,20 @@
 
   function getChannelColor(channel) {
     if (channel === 'alpha') return 'var(--blue)';
+    if (channel === 'hardware') return 'var(--amber)';
     return 'var(--green)';
   }
 
   function getChannelBgColor(channel) {
     if (channel === 'alpha') return 'var(--blue-dim)';
+    if (channel === 'hardware') return 'var(--amber-dim)';
     return 'var(--green-dim)';
   }
 
   function getChannelLabel(channel) {
     if (channel === 'alpha') return 'Alpha';
+    if (channel === 'hardware') return 'Hardware';
+    if (channel === 'stable') return 'Stable';
     return 'Release';
   }
 
@@ -48,6 +52,9 @@
                   <span class="sha">#{component.sha}</span>
                 {/if}
               </div>
+              {#if component.details?.length}
+                <div class="component-details">{component.details.join(' / ')}</div>
+              {/if}
             </div>
             {#if component.link}
               <button
@@ -151,6 +158,13 @@
     font-size: 11px;
     font-family: 'Courier New', monospace;
     color: var(--text-dim);
+  }
+
+  .component-details {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+    overflow-wrap: anywhere;
   }
 
   .link-button {

@@ -7,8 +7,10 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine
-RUN apk add --no-cache iw
+FROM node:22-trixie-slim
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gpsd python3-gps iw \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
