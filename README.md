@@ -15,6 +15,7 @@ Designed for quick at-a-glance checks from a phone — complex operations
 - **Mower control** — start, stop, dock, skip waypoint, reboot
 - **PWA** — installable as a home-screen app on iOS and Android
 - **Hostname display** — shows the mower's hostname instead of a generic title
+- **Component versions** — shows Sunray, CaSSAndRA, and u-blox GNSS firmware
 
 ## Architecture
 
@@ -29,6 +30,7 @@ Designed for quick at-a-glance checks from a phone — complex operations
 │  proxies AT commands to Sunray     │
 │  reads /proc/net/wireless for WiFi │
 │  reads os.hostname() for title     │
+│  reads u-blox MON-VER via ubxtool  │
 └──────────────┬──────────────────────┘
                │ HTTP POST (AT protocol)
 ┌──────────────▼──────────────────────┐
@@ -63,6 +65,9 @@ MOCK=1 npm run server
 | `SUNRAY_PASS` | `123456` | AT protocol password (for Caesar cipher handshake) |
 | `PORT` | `3000` | Dashboard listen port |
 | `MOCK` | — | Set to `1` for simulated data |
+| `GNSS_DEVICE` | `/dev/ttyACM0` | u-blox receiver serial device for `ubxtool MON-VER` |
+| `GNSS_POLL_MS` | `3600000` | Minimum interval between successful GNSS firmware refreshes |
+| `GNSS_RETRY_MS` | `60000` | Retry interval after a failed GNSS firmware probe |
 
 ## Container build
 
@@ -81,6 +86,8 @@ Runs as a Podman Quadlet on the mower's Raspberry Pi (host networking):
 Image=ghcr.io/autoditac/alfred-dashboard:latest
 Network=host
 Environment=SUNRAY_HOST=127.0.0.1
+Environment=GNSS_DEVICE=/dev/ttyACM0
+AddDevice=/dev/ttyACM0
 ```
 
 Managed by the [alfred-ansible](https://github.com/autoditac/alfred-ansible)
@@ -95,6 +102,7 @@ alfred-dashboard/
     lib/api.js              Fetch wrapper for /api/* endpoints
     components/
       Header.svelte         Hostname, firmware + MCU version, WiFi signal, connection dot
+      ComponentVersionsCard.svelte  Sunray, CaSSAndRA, and u-blox firmware versions
       StatusBadge.svelte    Operation state (IDLE / MOW / CHARGE / ERROR)
       BatteryCard.svelte    Voltage and current
       GpsCard.svelte        Satellites, fix, accuracy, DGPS age

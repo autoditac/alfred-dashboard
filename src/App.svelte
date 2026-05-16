@@ -59,7 +59,7 @@
   
   function componentsKey(comps) {
     if (!comps || !Array.isArray(comps)) return null;
-    return JSON.stringify(comps.map(c => ({ name: c.name, version: c.version, sha: c.sha })));
+    return JSON.stringify(comps.map(c => ({ name: c.name, version: c.version, sha: c.sha, details: c.details })));
   }
   
   let ackedComponents = $state(localStorage.getItem(COMP_ACK_KEY));

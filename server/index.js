@@ -19,8 +19,15 @@ const SUNRAY_PASS = parseInt(process.env.SUNRAY_PASS || '123456', 10);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const DOCK_LON = parseFloat(process.env.DOCK_LON || '0');
 const DOCK_LAT = parseFloat(process.env.DOCK_LAT || '0');
+const GNSS_DEVICE = process.env.GNSS_DEVICE || '/dev/ttyACM0';
+const GNSS_POLL_MS = parseInt(process.env.GNSS_POLL_MS || '3600000', 10);
+const GNSS_RETRY_MS = parseInt(process.env.GNSS_RETRY_MS || '60000', 10);
 
 const sunray = MOCK ? new MockSunrayClient() : new SunrayClient(SUNRAY_HOST, SUNRAY_PORT, SUNRAY_PASS);
+
+let gnssFirmwareCache = null;
+let gnssFirmwareCheckedAt = 0;
+let gnssFirmwareProbe = null;
 
 app.use('/api/*', cors());
 
@@ -93,6 +100,86 @@ function parseSunrayVersion(versionString) {
   return null;
 }
 
+function parseUbloxMonVer(output) {
+  if (!output) return null;
+
+  const fwver = output.match(/FWVER=([^\r\n]+)/)?.[1]?.trim();
+  const protver = output.match(/PROTVER=([^\r\n]+)/)?.[1]?.trim();
+  const mod = output.match(/MOD=([^\r\n]+)/)?.[1]?.trim();
+
+  if (!fwver && !protver && !mod) return null;
+  return { fwver, protver, mod };
+}
+
+function formatGnssComponent(parsed) {
+  const details = [];
+  if (parsed.protver) details.push(`PROTVER ${parsed.protver}`);
+  if (parsed.mod) details.push(parsed.mod);
+  details.push(GNSS_DEVICE);
+
+  return {
+    name: 'u-blox GNSS Receiver',
+    version: parsed.fwver || 'unknown',
+    channel: 'hardware',
+    timestamp: Date.now(),
+    details,
+  };
+}
+
+async function probeGnssFirmware() {
+  if (MOCK) {
+    gnssFirmwareCache = formatGnssComponent({
+      fwver: 'HPG 1.32',
+      protver: '27.31',
+      mod: 'ZED-F9P',
+    });
+    gnssFirmwareCheckedAt = Date.now();
+    return gnssFirmwareCache;
+  }
+
+  let output = '';
+  let errorOutput = '';
+
+  try {
+    const { stdout } = await execFileAsync('ubxtool', ['-f', GNSS_DEVICE, '-p', 'MON-VER'], {
+      timeout: 7000,
+      maxBuffer: 1024 * 1024,
+    });
+    output = stdout;
+  } catch (error) {
+    output = error.stdout || '';
+    errorOutput = error.stderr || error.message || '';
+  }
+
+  gnssFirmwareCheckedAt = Date.now();
+  const parsed = parseUbloxMonVer(output);
+  if (!parsed) {
+    if (errorOutput) {
+      console.warn(`GNSS firmware probe failed: ${errorOutput.trim()}`);
+    }
+    return gnssFirmwareCache;
+  }
+
+  gnssFirmwareCache = formatGnssComponent(parsed);
+  return gnssFirmwareCache;
+}
+
+async function getGnssFirmwareVersion() {
+  const now = Date.now();
+  const refreshMs = gnssFirmwareCache ? GNSS_POLL_MS : GNSS_RETRY_MS;
+  if (gnssFirmwareCheckedAt && now - gnssFirmwareCheckedAt < refreshMs) {
+    return gnssFirmwareCache;
+  }
+
+  if (!gnssFirmwareProbe) {
+    gnssFirmwareProbe = probeGnssFirmware().finally(() => {
+      gnssFirmwareProbe = null;
+    });
+  }
+
+  return gnssFirmwareProbe;
+}
+
 async function getCassandraVersion() {
   try {
     // Try to get image info from podman
@@ -151,6 +238,11 @@ app.get('/api/components', async (c) => {
   const cassandraComponent = await getCassandraVersion();
   if (cassandraComponent) {
     components.push(cassandraComponent);
+  }
+
+  const gnssComponent = await getGnssFirmwareVersion();
+  if (gnssComponent) {
+    components.push(gnssComponent);
   }
   
   return c.json({
