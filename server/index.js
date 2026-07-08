@@ -9,6 +9,7 @@ import { hostname } from 'node:os';
 const execFileAsync = promisify(execFile);
 import { SunrayClient } from './sunray.js';
 import { MockSunrayClient } from './mock.js';
+import { runPhase as runHwCheckPhase, PHASES as HWCHECK_PHASES } from './hwcheck.js';
 
 const app = new Hono();
 
@@ -272,6 +273,35 @@ app.post('/api/control', async (c) => {
 
   const result = await sunray.sendCommand(cmd);
   return c.json({ ok: true, response: result });
+});
+
+// --- Hardware check (lifted-mower motor test phases) ---
+// See server/hwcheck.js and alfred-os issue #18. Active phases require the
+// client to assert that the user confirmed the mower is safely lifted.
+
+app.get('/api/hwcheck/phases', (c) => {
+  return c.json({
+    phases: Object.entries(HWCHECK_PHASES).map(([id, p]) => ({ id, label: p.label })),
+  });
+});
+
+app.post('/api/hwcheck/phase', async (c) => {
+  const body = await c.req.json();
+  const { phase, confirmLifted, durationMs } = body;
+
+  if (phase !== 'baseline' && confirmLifted !== true) {
+    return c.json(
+      { error: 'Active motor phases require confirmLifted: true (user must confirm the mower is safely lifted)' },
+      400
+    );
+  }
+
+  try {
+    const result = await runHwCheckPhase(sunray, phase, { durationMs });
+    return c.json({ ok: true, result });
+  } catch (e) {
+    return c.json({ error: e.message }, e.status || 500);
+  }
 });
 
 // --- Static files (production) ---

@@ -12,6 +12,7 @@
   import ConnectionLost from './components/ConnectionLost.svelte';
   import FirmwareUpdateModal from './components/FirmwareUpdateModal.svelte';
   import ComponentVersionsCard from './components/ComponentVersionsCard.svelte';
+  import HardwareCheckWizard from './components/HardwareCheckWizard.svelte';
 
   let status = $state(null);
   let stats = $state(null);
@@ -159,6 +160,8 @@
         </div>
       {:else if tab === 'control'}
         <ControlPanel {status} />
+      {:else if tab === 'check'}
+        <HardwareCheckWizard {status} />
       {/if}
     </main>
   {/if}
@@ -171,6 +174,10 @@
     <button class="tab" class:active={tab === 'control'} onclick={() => tab = 'control'}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
       <span>Control</span>
+    </button>
+    <button class="tab" class:active={tab === 'check'} onclick={() => tab = 'check'}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.1-2.1 2.7-2.5z"/></svg>
+      <span>Check</span>
     </button>
   </nav>
 </div>
