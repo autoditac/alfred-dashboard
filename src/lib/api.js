@@ -38,3 +38,10 @@ export function sendControl(action, params = {}) {
     body: JSON.stringify({ action, params }),
   });
 }
+
+export function runHwCheckPhase(phase, { confirmLifted = false, durationMs } = {}) {
+  return request('/hwcheck/phase', {
+    method: 'POST',
+    body: JSON.stringify({ phase, confirmLifted, durationMs }),
+  });
+}
