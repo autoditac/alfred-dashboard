@@ -48,7 +48,17 @@ export const PHASES = {
   'right-forward': { drive: [V_ONE, OMEGA], label: 'Right wheel forward' },
   'right-backward': { drive: [-V_ONE, -OMEGA], label: 'Right wheel backward' },
   'both-forward': { drive: [0.15, 0], label: 'Both wheels forward' },
-  mow: { drive: 'mow', label: 'Mow motor spin-up' },
+  // The Alfred mow motor ramps its PWM slowly and the blade disc has real
+  // inertia: spin-up to steady state takes several seconds (field data,
+  // 2026-07-08). Run the phase longer and exclude the spin-up window from
+  // the aggregated current statistics.
+  mow: {
+    drive: 'mow',
+    label: 'Mow motor spin-up',
+    defaultMs: 10000,
+    maxMs: 15000,
+    spinupMs: 5000,
+  },
 };
 
 let phaseRunning = false;
@@ -123,8 +133,8 @@ export async function runPhase(sunray, phaseName, { durationMs } = {}) {
   }
 
   const duration = Math.min(
-    Math.max(parseInt(durationMs, 10) || DEFAULT_PHASE_MS, 1000),
-    MAX_PHASE_MS
+    Math.max(parseInt(durationMs, 10) || phaseDef.defaultMs || DEFAULT_PHASE_MS, 1000),
+    phaseDef.maxMs || MAX_PHASE_MS
   );
 
   phaseRunning = true;
@@ -151,7 +161,8 @@ export async function runPhase(sunray, phaseName, { durationMs } = {}) {
       if (s && typeof s.current === 'number') {
         // During OP_CHARGE the firmware reports charging current (negated);
         // exclude those samples rather than skewing the average.
-        if (s.operation !== 2) samples.push(Math.abs(s.current));
+        if (s.operation !== 2)
+          samples.push({ t: Date.now() - startedAt, current: Math.abs(s.current) });
       }
       await sleep(SAMPLE_INTERVAL_MS);
     }
@@ -166,11 +177,18 @@ export async function runPhase(sunray, phaseName, { durationMs } = {}) {
     throw err;
   }
 
-  // Drop the first sample (spin-up transient / stale cache) when we have
-  // enough data, then aggregate.
-  const usable = samples.length > 3 ? samples.slice(1) : samples;
-  const avgCurrent = usable.reduce((a, b) => a + b, 0) / usable.length;
-  const maxCurrent = Math.max(...usable);
+  // Exclude the spin-up window (per-phase) or the first sample (stale cache /
+  // transient) from the steady-state aggregate.
+  let usable = samples;
+  if (phaseDef.spinupMs && duration > phaseDef.spinupMs) {
+    const steady = samples.filter((s) => s.t >= phaseDef.spinupMs);
+    if (steady.length >= 3) usable = steady;
+  } else if (samples.length > 3) {
+    usable = samples.slice(1);
+  }
+  const currents = usable.map((s) => s.current);
+  const avgCurrent = currents.reduce((a, b) => a + b, 0) / currents.length;
+  const maxCurrent = Math.max(...currents);
 
   return {
     phase: phaseName,

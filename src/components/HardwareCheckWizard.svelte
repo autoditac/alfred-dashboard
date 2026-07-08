@@ -55,7 +55,8 @@
     {
       id: 'mow',
       title: 'Mow motor',
-      question: 'Did the mow blade spin up briefly and stop again?',
+      question:
+        'Did the mow blade spin up (this phase runs ~10 s — the blade may take several seconds to start) and stop again?',
     },
   ];
 
