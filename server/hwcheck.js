@@ -27,7 +27,12 @@ const V_ONE = (OMEGA * WHEEL_BASE_M) / 2;
 const DEFAULT_PHASE_MS = 4000;
 const MAX_PHASE_MS = 6000;
 const SAMPLE_INTERVAL_MS = 350;
-const DRIVE_KEEPALIVE_MS = 900;
+// The firmware zeroes both wheel set-points when no AT+M arrives within
+// 1000 ms (motor.cpp: setLinearAngularSpeedTimeout = millis() + 1000).
+// The resend period must stay well below that even with sampling round-trip
+// jitter; 900 ms was too tight and produced a visible once-per-second stutter
+// (observed on alfred, 2026-07-08).
+const DRIVE_KEEPALIVE_MS = 400;
 
 // Sunray operation codes (see OP_NAMES in sunray.js)
 const OP_MOW = 1;
